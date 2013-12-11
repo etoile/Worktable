@@ -7,20 +7,16 @@
  */
 
 #import <EtoileUI/ETLayoutItem+CoreObject.h>
+#import <EtoileUI/CoreObjectUI.h>
 #import "DocumentEditorController.h"
+#import "ETDocumentEditorItemFactory.h"
 
 @interface ETCompoundDocumentTemplate : ETItemTemplate
 @end
 
 @implementation DocumentEditorController
 
-- (void) setUpMenus
-{
-	[[ETApp mainMenu] addItem: [ETApp documentMenuItem]];
-	[[ETApp mainMenu] addItem: [ETApp editMenuItem]];
-	[[ETApp mainMenu] addItem: [ETApp insertMenuItem]];
-	[[ETApp mainMenu] addItem: [ETApp arrangeMenuItem]];
-}
+@synthesize editingContext, mainUndoTrack;
 
 /* For debugging */
 /*- (void) showBasicRectangleItems
@@ -39,86 +35,162 @@
 	[[itemFactory windowGroup] addItem: newRectItem];
 }*/
 
-- (void) applicationDidFinishLaunching: (NSNotification *)notif
+- (void) setUpMenus
 {
-	[self setUpMenus];
+	[[ETApp mainMenu] addItem: [ETApp documentMenuItem]];
+	[[ETApp mainMenu] addItem: [ETApp editMenuItem]];
+	[[ETApp mainMenu] addItem: [ETApp insertMenuItem]];
+	[[ETApp mainMenu] addItem: [ETApp arrangeMenuItem]];
+	
+	[ETApp toggleDevelopmentMenu: nil];
+}
 
-	COEditingContext *ctxt = [COEditingContext contextWithURL: 
-		[NSURL fileURLWithPath: [@"~/TestObjectStore.sqlite" stringByExpandingTildeInPath]]];
+- (NSString *) storePath
+{
+	return [@"~/TestObjectStore" stringByExpandingTildeInPath];
+}
 
-	[COEditingContext setCurrentContext: ctxt];
+// TODO: Remove duplication in OMAppController
+- (void) setUpEditingContext: (BOOL)clear
+{
+	if (clear && [[NSFileManager defaultManager] fileExistsAtPath: [self storePath]])
+	{
+		NSError *error = nil;
+		[[NSFileManager defaultManager] removeItemAtPath: [self storePath]
+		                                           error: &error];
+		ETAssert(error == nil);
+	}
+	COEditingContext *ctxt =
+		[COEditingContext contextWithURL: [NSURL fileURLWithPath: [self storePath]]];
+	ETAssert(ctxt != nil);
 
-	ETLayoutItemFactory *itemFactory = [ETLayoutItemFactory factory];
+	ASSIGN(editingContext, ctxt);
 
-	[[itemFactory windowGroup] setController: self];
+	[[NSNotificationCenter defaultCenter]
+		addObserver: self
+	 	   selector: @selector(didCommit:)
+	 	       name: COEditingContextDidChangeNotification
+	 	     object: editingContext];
+}
 
+// TODO: Remove duplication in OMAppController
+- (void) setUpUndoTrack: (BOOL)clear
+{
+	ETAssert([self editingContext] != nil);
+	ETUUID *trackUUID = [[NSUserDefaults standardUserDefaults] UUIDForKey: @"WTMainUndoTrackUUID"];
+
+	if (trackUUID == nil)
+	{
+		trackUUID = [ETUUID UUID];
+		[[NSUserDefaults standardUserDefaults] setUUID: trackUUID 
+		                                        forKey: @"WTMainUndoTrackUUID"];
+	}
+
+	ASSIGN(mainUndoTrack, [COUndoTrack trackForName: [trackUUID stringValue]
+	                             withEditingContext: [self editingContext]]);
+
+	if (clear)
+	{
+		[mainUndoTrack clear];
+	}
+}
+
+- (void) checkCopySupportForTemplateItem: (ETLayoutItemGroup *)mainItem
+{
+	ETDocumentEditorItemFactory *itemFactory = [ETDocumentEditorItemFactory factory];
+
+	[mainItem addItem: [[itemFactory rectangle] copy]];
+	[[itemFactory windowGroup] addItem: [mainItem copy]];
+	[[itemFactory windowGroup] addItem: [mainItem deepCopy]];
+}
+
+- (void) setUpTemplates
+{
+	ETDocumentEditorItemFactory *itemFactory =
+		[ETDocumentEditorItemFactory factoryWithObjectGraphContext: [COObjectGraphContext objectGraphContext]];
 	ETUTI *mainType = 
 		[ETUTI registerTypeWithString: @"org.etoile-project.compound-document" 
 		                  description: _(@"Etoile Compound or Composite Document Format")
 		             supertypeStrings: A(@"public.composite-content")
 		                     typeTags: [NSDictionary dictionary]];
+	ETLayoutItemGroup *mainItem = [itemFactory compoundDocument];
+	ETItemTemplate *template =
+		[ETCompoundDocumentTemplate templateWithItem: mainItem
+		                                 objectClass: Nil
+	                              objectGraphContext: [itemFactory objectGraphContext]];
 
-	// TODO: Use -compoundDocumentItem
-	[itemFactory beginRootObject];
-	mainItem = [itemFactory itemGroup];
-	[mainItem setSize: NSMakeSize(500, 400)];
-	[mainItem setLayout: [ETFreeLayout layout]];
-	[itemFactory endRootObject];
-
-	/*[mainItem addItem: [[itemFactory rectangle] copy]];
-	// FIXME:[[itemFactory windowGroup] addItem: [mainItem copy]];
-	[[itemFactory windowGroup] addItem: [mainItem deepCopy]];
-	return;*/
-
-	[self setTemplate: [ETCompoundDocumentTemplate templateWithItem: mainItem objectClass: Nil objectGraphContext: [itemFactory objectGraphContext]]
-	          forType: mainType];
-
+	[self setTemplate: template forType: mainType];
 	/* Set the type of the documented to be created by default with 'New' in the menu */
 	[self setCurrentObjectType: mainType];
+	
+	// NOTE: For debugging...
+	//[self checkCopySupportForTemplateItem: mainItem];
+}
+
+- (void) setUpAndShowEditorUI: (BOOL)clear
+{
+	ETAssert([self editingContext] != nil);
+	
+	/* Finish preparing document persistency */
+
+	[self setPersistentObjectContext: [self editingContext]];
+	
+	ETDocumentEditorItemFactory *itemFactory = [ETDocumentEditorItemFactory factory];
+
+	[[itemFactory windowGroup] setController: self];
+	
+	/* Reopen documents or create a new one */
+
+	if (clear)
+	{
+		[[NSUserDefaults standardUserDefaults] removeObjectForKey: @"kETOpenedDocumentUUIDs"];
+	}
+	[self showPreviouslyOpenedDocuments];
+	// FIXME: [self newDocument: nil]; to create a blank document
+	
+	/* Show aspect palette */
+
+	[[itemFactory windowGroup] addItem: [itemFactory objectPicker]];
+}
+
+- (void) applicationDidFinishLaunching: (NSNotification *)notif
+{
+	/* If YES, deletes the existing store, the undo track and previously opened 
+	   documents in the defaults */
+	BOOL clear = NO;
+
+	[self setUpMenus];
+	[self setUpEditingContext: clear];
+	[self setUpUndoTrack: clear];
+	[self setUpTemplates];
+	[self setUpAndShowEditorUI: clear];
 
 	//[self showBasicRectangleItemsForDebugging];
-	//[self newDocument: nil];
-	//[[NSUserDefaults standardUserDefaults] removeObjectForKey: @"kETOpenedDocumentUUIDs"];
-	[self showPreviouslyOpenedDocuments];
+}
 
-	ETLayoutItemGroup *picker = [itemFactory itemGroupWithRepresentedObject: [ETAspectRepository mainRepository]];
-	ETController *controller = AUTORELEASE([[ETController alloc] init]);
-	ETItemTemplate *template = [controller templateForType: [controller currentObjectType]];
-	ETSelectTool *tool = [ETSelectTool tool];
+// TODO: Remove duplication in OMAppController
+- (void) didCommit: (NSNotification *)notif
+{
+	COCommand *command = [[notif userInfo] objectForKey: kCOCommandKey];
+	BOOL isUndoOrRedo = (command == nil);
 
-	[tool setAllowsMultipleSelection: YES];
-	[tool setAllowsEmptySelection: NO];
-	[tool setShouldRemoveItemsAtPickTime: NO];
+	if (isUndoOrRedo)
+		return;
 
-	[[template item] setActionHandler: [ETAspectTemplateActionHandler sharedInstanceForObjectGraphContext: [itemFactory objectGraphContext]]];
-	[controller setAllowedPickTypes: A([ETUTI typeWithClass: [NSObject class]])];
+	ETLog(@"Recording command %@ on %@", command, mainUndoTrack);
 
-	[picker setActionHandler: [ETAspectTemplateActionHandler sharedInstanceForObjectGraphContext: [itemFactory objectGraphContext]]];
-	[picker setSize: NSMakeSize(300, 400)];
-	[picker setController: controller];
-	[picker setSource: picker];
-	[picker setLayout: [ETOutlineLayout layout]];
-	[[picker layout] setAttachedTool: tool];
-	[[picker layout] setDisplayedProperties: A(kETIconProperty, kETDisplayNameProperty)];
-	[picker setHasVerticalScroller: YES];
-	[picker reloadAndUpdateLayout];
-
-	[[itemFactory windowGroup] addItem: picker];
-	
-	[ETApp toggleDevelopmentMenu: nil];
-
-	/*ETShape *shape = [ETShape rectangleShape];
-
-	[shape becomePersistentInContext: ctxt rootObject: mainItem];*/
+	ETAssert([mainUndoTrack currentNode] != nil);
 }
 
 // TODO: Move the methods below to ETDocumentController once Worktable is more mature
 
 - (void) showPreviouslyOpenedDocuments
 {
+	ETAssert([self editingContext] != nil);
+
 	for (ETUUID *uuid in [self openedDocumentUUIDsFromDefaults])
 	{
-		ETLayoutItemGroup *documentItem = [[[COEditingContext currentContext] persistentRootForUUID: uuid] rootObject];
+		ETLayoutItemGroup *documentItem = [[[self editingContext] persistentRootForUUID: uuid] rootObject];
 		if (documentItem == nil)
 		{
 			ETLog(@"WARNING: Found no document %@", uuid);
@@ -177,7 +249,7 @@
 {
 	[self rememberOpenedDocumentItem: anItem];
 	// Hmm, not sure that's the proper place to commit
-	[[COEditingContext currentContext] commitWithType: @"Item Creation" shortDescription: @"Created Compound Document"];
+	[anItem commitWithType: @"Item Creation" shortDescription: @"Created Compound Document"];
 }
 
 // Won't be called on quit, -terminate: doesn't close the windows with -performClose:
@@ -196,6 +268,16 @@
 	[[[self activeItem] branch] redo];
 }
 
+// TODO: Remove duplication in OMAppController
+- (IBAction) browseUndoHistory: (id)sender
+{
+	ETAssert(mainUndoTrack != nil);
+	ETLayoutItemGroup *browser = [[ETDocumentEditorItemFactory factory]
+		historyBrowserWithRepresentedObject: mainUndoTrack title: nil];
+
+	[[[ETLayoutItemFactory factory] windowGroup] addItem: browser];
+}
+
 @end
 
 @implementation ETCompoundDocumentTemplate
@@ -211,12 +293,17 @@
 
 - (ETLayoutItem *) newItemWithURL: (NSURL *)aURL options: (NSDictionary *)options
 {
-	COEditingContext *editingContext = [COEditingContext currentContext];
-	NSAssert(editingContext != nil, @"Current editing context must not be nil to create a new item");
-
-	ETLayoutItem *item = [super newItemWithURL: aURL options: options];
+	COEditingContext *editingContext = [options objectForKey: kETTemplateOptionPersistentObjectContext];
+	NSAssert(editingContext != nil,
+		@"Current persistent object context must not be nil to create a new item");
+	NSAssert([editingContext isEditingContext],
+		@"Current persistent object context must be an editing context to create a new document");
+	ETDocumentEditorItemFactory *newDocumentFactory =
+		[ETDocumentEditorItemFactory factoryWithObjectGraphContext: [COObjectGraphContext objectGraphContext]];
+	ETLayoutItemGroup *item = [newDocumentFactory compoundDocument];
 
 	[editingContext insertNewPersistentRootWithRootObject: item];
+
 	return item;
 }
 
@@ -247,11 +334,11 @@
 
 	if (isLiveDevelopmentActive)
 	{
-		[documentItem setLayout: [ETFixedLayout layout]];
+		[documentItem setLayout: [ETFixedLayout layoutWithObjectGraphContext: [documentItem objectGraphContext]]];
 	}
 	else
 	{
-		[documentItem setLayout: [ETFreeLayout layout]];
+		[documentItem setLayout: [ETFreeLayout layoutWithObjectGraphContext: [documentItem objectGraphContext]]];
 	}
 	[documentItem commit];
 }

@@ -15,8 +15,19 @@
 
 @interface DocumentEditorController : ETDocumentController
 {
-	ETLayoutItemGroup *mainItem;
+	COEditingContext *editingContext;
+	COUndoTrack *mainUndoTrack;
 }
+
+/** @taskunit Persistency */
+
+@property (nonatomic, readonly) COEditingContext *editingContext;
+@property (nonatomic, readonly) COUndoTrack *mainUndoTrack;
+
+/** @taskunit Actions */
+
+- (IBAction) undo: (id)sender;
+- (IBAction) redo: (id)sender;
 
 @end
 
