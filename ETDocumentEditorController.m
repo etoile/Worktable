@@ -10,6 +10,7 @@
 #import <EtoileUI/CoreObjectUI.h>
 #import "ETDocumentEditorController.h"
 #import "ETDocumentEditorItemFactory.h"
+#import "ETDocumentEditorConstants.h"
 
 @interface ETCompoundDocumentTemplate : ETItemTemplate
 @end
@@ -248,8 +249,14 @@
 - (void) didCreateDocumentItem: (ETLayoutItem *)anItem
 {
 	[self rememberOpenedDocumentItem: anItem];
+
 	// Hmm, not sure that's the proper place to commit
-	[anItem commitWithType: @"Item Creation" shortDescription: @"Created Compound Document"];
+	NSError *error = nil;
+
+	[[self editingContext] commitWithIdentifier: kETDocumentEditorCommitCreate
+	                                  undoTrack: [self mainUndoTrack]
+	                                      error: &error];
+	ETAssert(error == nil);
 }
 
 // Won't be called on quit, -terminate: doesn't close the windows with -performClose:

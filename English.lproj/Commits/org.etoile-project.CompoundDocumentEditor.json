@@ -1,0 +1,15 @@
+{
+    "types":
+	{
+		"creation": "Item Creation",
+	},
+
+	"descriptors":
+	{
+		"create":
+		{
+			"type": "creation",
+		  	"shortDescription": "Created New Compound Document"
+		}
+	}
+}
