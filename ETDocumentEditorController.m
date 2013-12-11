@@ -8,13 +8,13 @@
 
 #import <EtoileUI/ETLayoutItem+CoreObject.h>
 #import <EtoileUI/CoreObjectUI.h>
-#import "DocumentEditorController.h"
+#import "ETDocumentEditorController.h"
 #import "ETDocumentEditorItemFactory.h"
 
 @interface ETCompoundDocumentTemplate : ETItemTemplate
 @end
 
-@implementation DocumentEditorController
+@implementation ETDocumentEditorController
 
 @synthesize editingContext, mainUndoTrack;
 
@@ -217,7 +217,7 @@
 - (void) rememberOpenedDocumentItem: (ETLayoutItem *)anItem
 {
 	NSArray *openedDocUUIDs = [self openedDocumentUUIDsFromDefaults];
-	ETUUID *persistentRootUUID = [[anItem persistentRoot] UUID];
+	ETUUID *UUID = [[anItem persistentRoot] UUID];
 
 	if ([openedDocUUIDs containsObject: UUID])
 		return;
@@ -230,7 +230,7 @@
 - (void) rememberClosedDocumentItem: (ETLayoutItem *)anItem
 {
 	NSArray *openedDocUUIDs = [self openedDocumentUUIDsFromDefaults];
-	ETUUID *persistentRootUUID = [[anItem persistentRoot] UUID];
+	ETUUID *UUID = [[anItem persistentRoot] UUID];
 
 	if ([openedDocUUIDs containsObject: UUID] == NO)
 		return;

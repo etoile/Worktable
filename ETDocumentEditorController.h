@@ -13,7 +13,7 @@
 #import <EtoileUI/EtoileUI.h>
 
 
-@interface DocumentEditorController : ETDocumentController
+@interface ETDocumentEditorController : ETDocumentController
 {
 	COEditingContext *editingContext;
 	COUndoTrack *mainUndoTrack;
