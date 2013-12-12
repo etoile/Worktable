@@ -67,6 +67,7 @@
 - (ETLayoutItemGroup *) editorTopBarWithController: (id)aController
 {
 	NSSize size = NSMakeSize([self defaultEditorSize].width, [self defaultIconAndLabelBarHeight]);
+	// TODO: Use -horizontalBarWithSize:
 	ETLayoutItemGroup *itemGroup = [self itemGroupWithSize: size];
 	// TODO: ETLayoutItem *insertItem = [self insertPopUpWithController: aController];
 	ETLayoutItem *insertItem = [self popUpMenu];

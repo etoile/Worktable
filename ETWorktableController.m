@@ -8,14 +8,14 @@
 
 #import <EtoileUI/ETLayoutItem+CoreObject.h>
 #import <EtoileUI/CoreObjectUI.h>
-#import "ETDocumentEditorController.h"
+#import "ETWorktableController.h"
 #import "ETDocumentEditorItemFactory.h"
 #import "ETDocumentEditorConstants.h"
 
 @interface ETCompoundDocumentTemplate : ETItemTemplate
 @end
 
-@implementation ETDocumentEditorController
+@implementation ETWorktableController
 
 @synthesize editingContext, mainUndoTrack;
 

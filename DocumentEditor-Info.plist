@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>ETPrincipalControllerClass</key>
-	<string>ETDocumentEditorController</string>
+	<string>ETWorktableController</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
