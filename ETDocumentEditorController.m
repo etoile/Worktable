@@ -36,6 +36,11 @@
 	[[itemFactory windowGroup] addItem: newRectItem];
 }*/
 
+- (COUndoTrack *) undoTrack
+{
+	return [self mainUndoTrack];
+}
+
 - (void) setUpMenus
 {
 	[[ETApp mainMenu] addItem: [ETApp documentMenuItem]];
@@ -114,9 +119,12 @@
 		                  description: _(@"Etoile Compound or Composite Document Format")
 		             supertypeStrings: A(@"public.composite-content")
 		                     typeTags: [NSDictionary dictionary]];
-	ETLayoutItemGroup *mainItem = [itemFactory compoundDocument];
+	// NOTE: This editor item is not used on New Document... To avoid the copy (currently unsupported
+	// until we migrate EtoileUI to COCopier), we just create a new instance in
+	// -[ETCompoundDocumentTemplate newItemWithURL:options:]
+	ETLayoutItemGroup *editorItem = [itemFactory editorWithCompoundDocument: [itemFactory compoundDocument]];
 	ETItemTemplate *template =
-		[ETCompoundDocumentTemplate templateWithItem: mainItem
+		[ETCompoundDocumentTemplate templateWithItem: editorItem
 		                                 objectClass: Nil
 	                              objectGraphContext: [itemFactory objectGraphContext]];
 
@@ -198,7 +206,12 @@
 			[[NSUserDefaults standardUserDefaults] removeObjectForKey: @"kETOpenedDocumentUUIDs"];
 			return;
 		}
-		[[[ETLayoutItemFactory factory] windowGroup] addItem: documentItem];
+		
+		// TODO: We should use -[ETDocumentController openItemWithURL:options:]
+		ETDocumentEditorItemFactory *transientItemFactory = [ETDocumentEditorItemFactory factory];
+
+		[[transientItemFactory windowGroup]
+			addItem: [transientItemFactory editorWithCompoundDocument: documentItem]];
 	}
 }
 
@@ -218,7 +231,8 @@
 - (void) rememberOpenedDocumentItem: (ETLayoutItem *)anItem
 {
 	NSArray *openedDocUUIDs = [self openedDocumentUUIDsFromDefaults];
-	ETUUID *UUID = [[anItem persistentRoot] UUID];
+	// TODO: Access the persistent item through a controller
+	ETUUID *UUID = [[[anItem itemForIdentifier: @"compoundDocument"] persistentRoot] UUID];
 
 	if ([openedDocUUIDs containsObject: UUID])
 		return;
@@ -231,7 +245,8 @@
 - (void) rememberClosedDocumentItem: (ETLayoutItem *)anItem
 {
 	NSArray *openedDocUUIDs = [self openedDocumentUUIDsFromDefaults];
-	ETUUID *UUID = [[anItem persistentRoot] UUID];
+	// TODO: Access the persistent item through a controller
+	ETUUID *UUID = [[[anItem itemForIdentifier: @"compoundDocument"] persistentRoot] UUID];
 
 	if ([openedDocUUIDs containsObject: UUID] == NO)
 		return;
@@ -267,12 +282,14 @@
 
 - (IBAction) undo: (id)sender
 {
-	[[[self activeItem] branch] undo];
+	// TODO: Access the persistent item through a controller
+	[[[[self activeItem] itemForIdentifier: @"compoundDocument"] branch] undo];
 }
 
 - (IBAction) redo: (id)sender
 {
-	[[[self activeItem] branch] redo];
+	// TODO: Access the persistent item through a controller
+	[[[[self activeItem] itemForIdentifier: @"compoundDocument"] branch] redo];
 }
 
 // TODO: Remove duplication in OMAppController
@@ -289,12 +306,17 @@
 
 @implementation ETCompoundDocumentTemplate
 
+- (ETLayoutItem *) contentItem
+{
+	return [[self item] itemForIdentifier: @"compoundDocument"];
+}
+
 - (BOOL) writeItem: (ETLayoutItem *)anItem 
              toURL: (NSURL *)aURL 
            options: (NSDictionary *)options
 {
-	ETAssert([anItem compoundDocument] != nil);
-	[[anItem persistentRoot] commit];
+	ETAssert([[self contentItem] compoundDocument] != nil);
+	[[[self contentItem] persistentRoot] commit];
 	return YES;
 }
 
@@ -307,11 +329,15 @@
 		@"Current persistent object context must be an editing context to create a new document");
 	ETDocumentEditorItemFactory *newDocumentFactory =
 		[ETDocumentEditorItemFactory factoryWithObjectGraphContext: [COObjectGraphContext objectGraphContext]];
-	ETLayoutItemGroup *item = [newDocumentFactory compoundDocument];
+	ETDocumentEditorItemFactory *transientItemFactory = [ETDocumentEditorItemFactory factory];
+	ETLayoutItemGroup *contentItem = [newDocumentFactory compoundDocument];
 
-	[editingContext insertNewPersistentRootWithRootObject: item];
+	[editingContext insertNewPersistentRootWithRootObject: contentItem];
 
-	return item;
+	ETLayoutItemGroup *presentedItem = [transientItemFactory editorWithCompoundDocument: contentItem];
+	ETAssert([presentedItem itemForIdentifier: @"compoundDocument"] == contentItem);
+
+	return presentedItem;
 }
 
 @end
@@ -326,7 +352,7 @@
 
 	[[counterItem view] setIntegerValue: [[counterItem view] integerValue] + 1];
 	[counterItem didChangeValueForProperty: kETViewProperty];
-	[counterItem commit];
+	[[counterItem persistentRoot] commit];
 }
 
 @end
@@ -347,7 +373,7 @@
 	{
 		[documentItem setLayout: [ETFreeLayout layoutWithObjectGraphContext: [documentItem objectGraphContext]]];
 	}
-	[documentItem commit];
+	[[documentItem persistentRoot] commit];
 }
 
 @end

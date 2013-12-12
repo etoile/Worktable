@@ -18,6 +18,7 @@
 
 }
 
+- (ETLayoutItemGroup *) editorWithCompoundDocument: (ETLayoutItemGroup *)aCompoundDocument;
 - (ETLayoutItemGroup *) compoundDocument;
 - (ETLayoutItemGroup *) objectPicker;
 
