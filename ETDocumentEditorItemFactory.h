@@ -12,6 +12,8 @@
 #import <CoreObject/CoreObject.h>
 #import <EtoileUI/EtoileUI.h>
 
+@class ETDocumentEditorController;
+
 
 @interface ETDocumentEditorItemFactory : ETLayoutItemFactory
 {
@@ -20,6 +22,8 @@
 
 - (ETLayoutItemGroup *) editorWithCompoundDocument: (ETLayoutItemGroup *)aCompoundDocument;
 - (ETLayoutItemGroup *) compoundDocument;
+- (ETLayoutItemGroup *) inspectorWithObject: (id)anObject
+                                 controller: (ETDocumentEditorController *)aController;
 - (ETLayoutItemGroup *) objectPicker;
 
 @end

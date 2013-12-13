@@ -17,14 +17,26 @@
 {
 	COEditingContext *editingContext;
 	COUndoTrack *mainUndoTrack;
+	ETLayoutItemGroup *_aspectPicker;
+	ETLayoutItemGroup *_inspectorItem;
 }
+
+/** @taskunit Accessing UI Objects */
+
+@property (nonatomic, readonly) ETLayoutItemGroup *inspectorItem;
 
 /** @taskunit Persistency */
 
 @property (nonatomic, readonly) COEditingContext *editingContext;
 @property (nonatomic, readonly) COUndoTrack *mainUndoTrack;
 
-/** @taskunit Actions */
+/** @taskunit Presentation Actions */
+
+- (IBAction) toggleColorPicker: (id)sender;
+- (IBAction) toggleInspector: (id)sender;
+- (IBAction) toggleAspectPicker: (id)sender;
+
+/** @taskunit History Actions */
 
 - (IBAction) undo: (id)sender;
 - (IBAction) redo: (id)sender;

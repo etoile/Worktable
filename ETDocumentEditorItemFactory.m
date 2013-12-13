@@ -82,15 +82,15 @@
 	                                               action: @selector(ungroup:)];
 	ETLayoutItem *inspectorItem = [self buttonWithIconNamed: @"application-x-executable"
 	                                                 target: nil
-	                                                 action: @selector(toggleInspectorVisibility:)];
+	                                                 action: @selector(toggleInspector:)];
 	ETLayoutItem *colorItem = [self buttonWithIconNamed: @"palette-colors"
 	                                             target: nil
-	                                             action: @selector(toggleColorPickerVisibility:)];
-	ETLayoutItem *aspectRepoItem = [self buttonWithIconNamed: @"folder"
-	                                                  target: nil
-	                                                  action: @selector(toggleAspectRepositoryVisibility:)];
+	                                             action: @selector(toggleColorPicker:)];
+	ETLayoutItem *aspectPickerItem = [self buttonWithIconNamed: @"folder"
+	                                                    target: nil
+	                                                    action: @selector(toggleAspectPicker:)];
 	ETLayoutItem *searchItem = [self searchFieldWithTarget: aController
-	                                                action: @selector(filter:)];
+	                                                action: @selector(search)];
 	ETLayoutItem *shareItem = [self buttonWithIconNamed: @"preferences-desktop-users"
 	                                           target: nil
 	                                           action: @selector(share:)];
@@ -126,7 +126,7 @@
 	[rightItemGroup addItems:
 	 	A([self barElementFromItem: inspectorItem withLabel: _(@"Inspector")],
 		  [self barElementFromItem: colorItem withLabel: _(@"Colors")],
-		  [self barElementFromItem: aspectRepoItem withLabel: _(@"Aspect Repository")],
+		  [self barElementFromItem: aspectPickerItem withLabel: _(@"Aspects")],
 		  [self barElementFromItem: searchItem withLabel: _(@"Filter")],
 		  [self barElementFromItem: shareItem withLabel: _(@"Share")])];
 
@@ -178,6 +178,12 @@
 	[tool setShouldRemoveItemsAtPickTime: NO];
 
 	return tool;
+}
+
+- (ETLayoutItemGroup *) inspectorWithObject: (id)anObject
+                                 controller: (ETDocumentEditorController *)aController
+{
+	return nil;
 }
 
 // TODO: Remove duplication in ETUIBuilderItemFactory

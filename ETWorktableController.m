@@ -17,7 +17,14 @@
 
 @implementation ETWorktableController
 
-@synthesize editingContext, mainUndoTrack;
+@synthesize editingContext, mainUndoTrack, inspectorItem = _inspectorItem;
+
+- (void) dealloc
+{
+	DESTROY(_inspectorItem);
+	DESTROY(_aspectPicker);
+	[super dealloc];
+}
 
 /* For debugging */
 /*- (void) showBasicRectangleItems
@@ -36,10 +43,28 @@
 	[[itemFactory windowGroup] addItem: newRectItem];
 }*/
 
+#pragma mark - Persistency
+
 - (COUndoTrack *) undoTrack
 {
 	return [self mainUndoTrack];
 }
+
+// TODO: Remove duplication in OMAppController
+- (void) didCommit: (NSNotification *)notif
+{
+	COCommand *command = [[notif userInfo] objectForKey: kCOCommandKey];
+	BOOL isUndoOrRedo = (command == nil);
+
+	if (isUndoOrRedo)
+		return;
+
+	ETLog(@"Recording command %@ on %@", command, mainUndoTrack);
+
+	ETAssert([mainUndoTrack currentNode] != nil);
+}
+
+#pragma mark - Finish Launching
 
 - (void) setUpMenus
 {
@@ -147,6 +172,7 @@
 	ETDocumentEditorItemFactory *itemFactory = [ETDocumentEditorItemFactory factory];
 
 	[[itemFactory windowGroup] setController: self];
+	[[itemFactory windowGroup] setDelegate: self];
 	
 	/* Reopen documents or create a new one */
 
@@ -159,7 +185,8 @@
 	
 	/* Show aspect palette */
 
-	[[itemFactory windowGroup] addItem: [itemFactory objectPicker]];
+	ASSIGN(_aspectPicker, [itemFactory objectPicker]);
+	[self toggleAspectPicker: nil];
 }
 
 - (void) applicationDidFinishLaunching: (NSNotification *)notif
@@ -177,19 +204,15 @@
 	//[self showBasicRectangleItemsForDebugging];
 }
 
-// TODO: Remove duplication in OMAppController
-- (void) didCommit: (NSNotification *)notif
+#pragma mark - Tracking Active Document
+
+/** The active item/document has changed. */
+- (void) itemGroupSelectionDidChange: (NSNotification *)notif
 {
-	COCommand *command = [[notif userInfo] objectForKey: kCOCommandKey];
-	BOOL isUndoOrRedo = (command == nil);
-
-	if (isUndoOrRedo)
-		return;
-
-	ETLog(@"Recording command %@ on %@", command, mainUndoTrack);
-
-	ETAssert([mainUndoTrack currentNode] != nil);
+	[self updateInspector];
 }
+
+#pragma mark - Tracking Opened Documents
 
 // TODO: Move the methods below to ETDocumentController once Worktable is more mature
 
@@ -279,6 +302,92 @@
 {
 	[self rememberClosedDocumentItem: anItem];
 }
+
+#pragma mark - Presentation
+
+- (ETLayoutItemGroup *) windowGroup
+{
+	return [[ETDocumentEditorItemFactory factory] windowGroup];
+}
+
+- (BOOL) isInspectorHidden
+{
+	return ([[self windowGroup] containsItem: [self inspectorItem]] == NO);
+}
+
+- (void) showInspector
+{
+	[[self windowGroup] addItem: [self inspectorItem]];
+}
+
+- (void) hideInspector
+{
+	ETAssert([[self windowGroup] containsItem: [self inspectorItem]]);
+	[[self windowGroup] removeItem: [self inspectorItem]];
+}
+
+- (void) updateInspector
+{
+	if ([self isInspectorHidden])
+		return;
+
+	CGPoint prevInspectorOrigin = [[self inspectorItem] origin];
+
+	[self hideInspector];
+
+	/* Switch to the inspector bound to the current frontmost document */
+	ASSIGN(_inspectorItem, [[self activeItem] inspectorItem]);
+	[_inspectorItem setOrigin: prevInspectorOrigin];
+
+	[self showInspector];
+}
+
+- (NSColorPanel *)colorPanel
+{
+	return [NSColorPanel sharedColorPanel];
+}
+
+#pragma mark - Presentation Actions
+
+- (IBAction) toggleColorPicker: (id)sender
+{
+	if ([[self colorPanel] isVisible])
+	{
+		[[self colorPanel] orderOut: sender];
+	}
+	else
+	{
+		[[self colorPanel] makeKeyAndOrderFront: sender];
+	}
+}
+
+- (IBAction) toggleInspector: (id)sender
+{
+	if ([self isInspectorHidden])
+	{
+		[self showInspector];
+	}
+	else
+	{
+		[self hideInspector];
+	}
+}
+
+- (IBAction) toggleAspectPicker: (id)sender
+{
+	ETLayoutItemFactory *itemFactory = [ETDocumentEditorItemFactory factory];
+
+	if ([[itemFactory windowGroup] containsItem: _aspectPicker])
+	{
+		[[itemFactory windowGroup] removeItem: _aspectPicker];
+	}
+	else
+	{
+		[[itemFactory windowGroup] addItem: _aspectPicker];
+	}
+}
+
+#pragma mark - History Actions
 
 - (IBAction) undo: (id)sender
 {
