@@ -24,6 +24,5 @@
 - (ETLayoutItemGroup *) compoundDocument;
 - (ETLayoutItemGroup *) inspectorWithObject: (id)anObject
                                  controller: (ETDocumentEditorController *)aController;
-- (ETLayoutItemGroup *) objectPicker;
 
 @end

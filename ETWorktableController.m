@@ -357,7 +357,7 @@
 	}
 	else
 	{
-		[[self colorPanel] makeKeyAndOrderFront: sender];
+		[[self colorPanel] orderFront: sender];
 	}
 }
 

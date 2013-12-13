@@ -168,49 +168,10 @@
 	return mainItem;
 }
 
-// TODO: Remove duplication in ETUIBuilderItemFactory
-- (ETTool *) pickerTool
-{
-	ETSelectTool *tool = [ETSelectTool tool];
-	
-	[tool setAllowsMultipleSelection: YES];
-	[tool setAllowsEmptySelection: NO];
-	[tool setShouldRemoveItemsAtPickTime: NO];
-
-	return tool;
-}
-
 - (ETLayoutItemGroup *) inspectorWithObject: (id)anObject
                                  controller: (ETDocumentEditorController *)aController
 {
 	return nil;
-}
-
-// TODO: Remove duplication in ETUIBuilderItemFactory
-- (ETLayoutItemGroup *) objectPicker
-{
-	ETLayoutItemGroup *picker = [self itemGroupWithRepresentedObject: [ETAspectRepository mainRepository]];
-	ETController *controller = AUTORELEASE([[ETController alloc] initWithObjectGraphContext: [self objectGraphContext]]);
-	ETItemTemplate *template = [controller templateForType: [controller currentObjectType]];
-
-	[[template item] setActionHandler:
-	 	[ETAspectTemplateActionHandler sharedInstanceForObjectGraphContext: [self objectGraphContext]]];
-	[picker setActionHandler:
-	 	[ETAspectTemplateActionHandler sharedInstanceForObjectGraphContext: [self objectGraphContext]]];
-
-	[controller setAllowedPickTypes: A([ETUTI typeWithClass: [NSObject class]])];
-
-	// TODO: Retrieve the size as ETUIBuilderItemFactory does it
-	[picker setSize: NSMakeSize(300, 400)];
-	[picker setController: controller];
-	[picker setSource: picker];
-	[picker setLayout: [ETOutlineLayout layoutWithObjectGraphContext: [self objectGraphContext]]];
-	[[picker layout] setAttachedTool: [self pickerTool]];
-	[[picker layout] setDisplayedProperties: A(kETIconProperty, kETDisplayNameProperty)];
-	[picker setHasVerticalScroller: YES];
-	[picker reloadAndUpdateLayout];
-
-	return picker;
 }
 
 @end
