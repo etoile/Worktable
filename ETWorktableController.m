@@ -186,7 +186,7 @@
 	/* Show aspect palette */
 
 	ASSIGN(_aspectPicker, [itemFactory objectPicker]);
-	[self toggleAspectPicker: nil];
+	//[self toggleAspectPicker: nil];
 }
 
 - (void) applicationDidFinishLaunching: (NSNotification *)notif

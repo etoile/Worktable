@@ -31,7 +31,7 @@
 	[self setInitialFocusedItem: anItem];
 	[self startObserveObject: anItem
 	     forNotificationName: ETItemGroupSelectionDidChangeNotification
-	                selector: @selector(contentViewSelectionDidChange:)];
+	                selector: @selector(documentItemSelectionDidChange:)];
 
 	ASSIGN(_inspectorItem, 
 		[[ETDocumentEditorItemFactory factory] inspectorWithObject: _documentItem
@@ -46,7 +46,7 @@
 #pragma mark - Notifications
 
 /** The selection inside the document has changed. */
-- (void) itemGroupSelectionDidChange: (NSNotification *)notif
+- (void) documentItemSelectionDidChange: (NSNotification *)notif
 {
 	// TODO: [self updateInspector];
 }

@@ -8,6 +8,7 @@
 
 #import <EtoileUI/ETLayoutItem+CoreObject.h>
 #import "ETDocumentEditorItemFactory.h"
+#import "ETDocumentEditorController.h"
 
 @implementation ETDocumentEditorItemFactory
 
@@ -137,7 +138,7 @@
 
 - (ETLayoutItemGroup *) editorWithCompoundDocument: (ETLayoutItemGroup *)aCompoundDocument
 {
-	ETController *controller = AUTORELEASE([[ETController alloc] initWithObjectGraphContext: [self objectGraphContext]]);
+	ETController *controller = AUTORELEASE([[ETDocumentEditorController alloc] initWithObjectGraphContext: [self objectGraphContext]]);
 	ETLayoutItemGroup *topBar = [self editorTopBarWithController: controller];
 	ETLayoutItemGroup *editor = [self itemGroupWithSize: [self defaultEditorSize]];
 
@@ -145,8 +146,8 @@
 	[editor setIdentifier: @"editor"];
 	[editor setAutoresizingMask: ETAutoresizingFlexibleWidth | ETAutoresizingFlexibleHeight];
 	[editor setLayout: [ETColumnLayout layoutWithObjectGraphContext: [self objectGraphContext]]];
-	// TODO: [editor setController: aController];
-	//[aController setDocumentContentItem: anObject];
+	[editor setController: controller];
+	[controller setDocumentItem: aCompoundDocument];
 
 	/*ETLog(@"\n%@\n", [editor descriptionWithOptions: [NSMutableDictionary dictionaryWithObjectsAndKeys:
 		A(@"frame", @"autoresizingMask"), kETDescriptionOptionValuesForKeyPaths,
@@ -155,6 +156,8 @@
 	return editor;
 }
 
+/** The tool bound to the compound document become active when the initial focused item is set. 
+Since the select tool sets itself as the first responder, the menu actions are working even without the compound document action handler returning YES -acceptsFirstResponder. */
 - (ETLayoutItemGroup *) compoundDocument
 {
 	ETLayoutItemGroup *mainItem = [self itemGroupWithSize: [self defaultEditorBodySize]];
